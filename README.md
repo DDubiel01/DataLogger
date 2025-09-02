@@ -1,2 +1,17 @@
-# SniperCode
-Are you ever walking on campus and see somebody you know? Do you wish they knew you saw them? Take a picture, send it to a groupchat, and delegate somebody to log it with SniperCode! This Tkinter based Python GUI is built to log snipes.
+## SniperCode
+Your one stop shop for logging snipes
+
+## Purpose
+This was created to make logging and tracking snipes easier. The code allows loggers to input pairs of names, makes sure they are valid, and writes them to a Google spreadsheet. Why not just log them in a spreadsheet directly? SniperCode prevents you from making errors by only allowing whitelisted names and by automatically logging dates. It's also easier to launch and you don't have to worry about keeping track of spreadsheet versions or ensuring loggers are keeping the same format.
+
+## Features
+- **White List Names**
+    - SniperCode uses a list of acceptable names stored on Sheets to ensure loggers are keeping consistent format and mitigating mistakes
+- **Google Sheets Access**
+    - Sheets is used as a database for storing snipes. Users don't have to worry about accessing and viewing databases and can easily get to the raw data to correct mistakes
+
+## Installation
+1. Install the requirements.txt file  
+`pip install -r path/to/requirements.txt`
+1. Drop the required OAuth credentials into the gui/config folder with the name client_secret.json
+1. Done!
