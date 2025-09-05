@@ -83,7 +83,7 @@ class mainEntryFrame(ttk.Frame):
         try:
             whitelst_img = Image.open(self.master.location + r'\gui\assets\White_List_PNG.png')
         except Exception as err:
-            master.fun.GenericError(err)
+            gui_funcs.GenericError(err)
 
         whitelst_img= whitelst_img.resize((22,22))
         whitelist_pic= ImageTk.PhotoImage(whitelst_img, master = self.options_frm)
@@ -96,6 +96,23 @@ class mainEntryFrame(ttk.Frame):
 
         self.whitelst_btn.pack(side='right')
 
+        #Stats button
+        try:
+            stats_img = Image.open(self.master.location + r'\gui\assets\Stats_Icon_PNG.png')
+        except Exception as err:
+            gui_funcs.GenericError(err)
+
+        stats_img= stats_img.resize((22,22))
+        stats_pic= ImageTk.PhotoImage(stats_img, master = self.options_frm)
+
+        self.stats_btn = ttk.Button(master=self.options_frm,
+                                 image=stats_pic,
+                                 command = master.launchStats,
+                                 style = 'default.TButton')
+        self.stats_btn.image = stats_pic
+
+        self.stats_btn.pack(side='right')
+
         # Yesterday button
         self.yday_btn = ttk.Button(master = self.options_frm,
                              text = 'Today',
@@ -107,15 +124,15 @@ class mainEntryFrame(ttk.Frame):
         try:
             settings_img = Image.open(self.master.location + r'\gui\assets\Settings_Icon_PNG.png')
         except Exception as err:
-            master.fun.GenericError(err)
+            gui_funcs.GenericError(err)
 
         settings_img= settings_img.resize((22,22))
         settings_pic= ImageTk.PhotoImage(settings_img, master = self.options_frm)
 
-        self.settings_btn = ttk.Label(master = self.options_frm,
+        self.settings_btn = ttk.Button(master = self.options_frm,
                                       image=settings_pic,
-                                      style = 'default.TLabel')
-        self.settings_btn.bind('<Button-1>', master.SettingsBtn)
+                                      command = master.SettingsBtn,
+                                      style = 'default.TButton')
         self.settings_btn.image = settings_pic
         self.settings_btn.pack(side = 'left', padx = (2,0))
         
@@ -161,7 +178,7 @@ class TableFrame(ttk.Frame):
 
         #convert list to dataframe
         yday = self.master.mastent_frm.yday_btn.config()['style'][4] == 'yday_green.TButton'
-        self.tableframe = self.master.fun.PrepareData(self.master.mastent_frm.Tabs.buildDataList(), yday)
+        self.tableframe = gui_funcs.PrepareData(self.master.mastent_frm.Tabs.buildDataList(), yday)
     
     def createFirstTime(self, master):
         #Builds the table frame buttons and table and all that
@@ -343,24 +360,20 @@ class SettingsPopUp(tk.Toplevel):
     
 class App(ThemedTk):
     def __init__(self):
-        #Self.fun is just a way to store all the general purpose functions to keep it more organized
-        self.fun = gui_funcs
-
         #Self.location is the location where the folder is stored
         self.location = os.path.dirname(__file__)
         try:
             with open(self.location + r'\gui\config\ProgInfo.json', 'r') as progfile:
              self.proginfo = json.load(progfile)
         except Exception as err:
-            print(err)
-            self.fun.GenericError(err)
+            gui_funcs.GenericError(err)
             sys.exit()
         
         #Load The Whitelist    
         #Call the Sheet
         try:
-            creds = gui_funcs.oauth_flow(self.location)
-            self.client = pygsheets.authorize(credentials = creds)
+            self.creds = gui_funcs.oauth_flow(self.location)
+            self.client = pygsheets.authorize(credentials = self.creds)
             self.workbook = self.client.open(self.proginfo['Google Sheet Name'])
             #Get the whole column of the whitelist sheet
             self.Whitelist = self.workbook.worksheet('title','Whitelist').get_col(1,include_tailing_empty = False)
@@ -377,9 +390,9 @@ class App(ThemedTk):
         try:
             self.iconbitmap(self.location + r'\gui\assets\CrossHairIcon_ICO.ico')
         except Exception as err:
-            self.fun.GenericError(err)
+            gui_funcs.GenericError(err)
         
-        self.title('Sniper Data Entry V3.0')
+        self.title('Data Entry V3.0')
 
         #set button/label styles
         self.style.configure('default.TButton', font=('Helvetica', 12))
@@ -412,7 +425,7 @@ class App(ThemedTk):
     def EntrySubmitBtn(app):
         #Make Sure the data is good before sending it on
         
-        if app.fun.CheckWhiteList(app.mastent_frm.Tabs.framelist,app):
+        if gui_funcs.CheckWhiteList(app.mastent_frm.Tabs.framelist,app):
             if app.masttable_frm.IsStuffCreated:
                 app.mastent_frm.pack_forget()
                 app.masttable_frm.showTable(app)
@@ -432,11 +445,7 @@ class App(ThemedTk):
         sys.exit()
         
     def DataSubmitBtn(app):
-        #Open Sheet
-        # gc = pygsheets.authorize(service_file=app.proginfo['Credentials'])
-        
         #Open WorkBook
-        # workbook = gc.open(app.proginfo['Google Sheet Name'])
         worksheet = app.workbook.worksheet('title', app.proginfo['User'])
 
         sheetinfo = worksheet.append_table(app.masttable_frm.table.model.df.values.tolist())
@@ -451,9 +460,20 @@ class App(ThemedTk):
         app.masttable_frm.pack_forget()
         app.mastent_frm.pack()
         
-    def SettingsBtn(app, event):
+    def SettingsBtn(app):
         SettingsPopUp(app)
 
+    def launchStats(app):
+        if tk.messagebox.askyesno(title = 'Launch Analytics',
+                                 message = 'This will close the current window and open the Analytics Window\nAll current entries will be lost\n\nContinue?'):
+            from subprocess import Popen
+            Popen([sys.executable, app.location + '\Analytics_gui.py'])
+            print('Launched')
+            app.destroy()
+
+        else:
+            return
+        
     def TabUp(app):
         #Check within legal range
         if app.mastent_frm.Tabs.activetab >= len(app.mastent_frm.Tabs.tablst) - 1:
@@ -477,7 +497,7 @@ class App(ThemedTk):
     def EnterKey_handler(app, event):
         if len(app.mastent_frm.Tabs.framelist) % int(app.proginfo['Entries per Tab']) == 0:
             #Check the whitelist. First arg must be a list, second must be the app
-            if app.fun.CheckWhiteList([app.mastent_frm.Tabs.framelist[-1]],app):
+            if gui_funcs.CheckWhiteList([app.mastent_frm.Tabs.framelist[-1]],app):
                 app.mastent_frm.Tabs.framelist[-1].sniped_ent.unbind('<Return>')
                 
                 #Check if this is the first time a new tab is being created
@@ -510,7 +530,7 @@ class App(ThemedTk):
                 
         else:
             #Check the whitelist. First arg must be a list, second must be the app
-            if app.fun.CheckWhiteList([app.mastent_frm.Tabs.framelist[-1]],app):
+            if gui_funcs.CheckWhiteList([app.mastent_frm.Tabs.framelist[-1]],app):
                 app.mastent_frm.Tabs.framelist[-1].sniped_ent.unbind('<Return>')
                 #Create a new frame
                 Frame = app.mastent_frm.subEntryFrame(app.mastent_frm.Tabs.tablst[-1])

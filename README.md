@@ -1,4 +1,4 @@
-## SniperCode
+## DataLogger
 Your one stop shop for logging snipes
 
 ## Purpose
@@ -9,6 +9,8 @@ This was created to make logging and tracking snipes easier. The code allows log
     - SniperCode uses a list of acceptable names stored on Sheets to ensure loggers are keeping consistent format and mitigating mistakes
 - **Google Sheets Access**
     - Sheets is used as a database for storing snipes. Users don't have to worry about accessing and viewing databases and can easily get to the raw data to correct mistakes
+- **Analytics**
+    - Stat breakdowns for the group as a whole and for individual players. Users can select which stats they want generated and view the results in a spreadsheet
 
 ## Installation
 1. Install the requirements.txt file  
