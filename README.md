@@ -19,3 +19,5 @@ This was created to make logging and tracking snipes easier. The code allows log
 `pip install -r path/to/requirements.txt`
 1. Drop the required OAuth credentials into the gui/config folder with the name client_secret.json
 1. Done!
+
+1. hello from vscode
