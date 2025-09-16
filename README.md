@@ -6,11 +6,13 @@ This was created to make logging and tracking snipes easier. The code allows log
 
 ## Features
 - **White List Names**
-    - SniperCode uses a list of acceptable names stored on Sheets to ensure loggers are keeping consistent format and mitigating mistakes
+    - DataLogger uses a list of acceptable names stored on Sheets to ensure loggers are keeping consistent format and mitigating mistakes
 - **Google Sheets Access**
     - Sheets is used as a database for storing snipes. Users don't have to worry about accessing and viewing databases and can easily get to the raw data to correct mistakes
 - **Analytics**
     - Stat breakdowns for the group as a whole and for individual players. Users can select which stats they want generated and view the results in a spreadsheet
+- **Multiple Themes**
+    - DataLogger can run in any Themed Tkinter theme. The default is set to Aqua
 
 ## Installation
 1. Install the requirements.txt file  
