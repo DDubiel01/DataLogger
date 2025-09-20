@@ -1,8 +1,9 @@
 {
-    "User": "David",
-    "Analytics Location": "C:/Users/David/Downloads/Stat Outputs",
+    "User": "",
+    "Analytics Location": "",
     "Google Sheet Name": "Sniper Logging",
     "Theme": "aqua",
     "Entries per Tab": "15",
     "Whitelist Sheet": "Whitelist for Decryption"
+
 }
