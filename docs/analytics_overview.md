@@ -36,3 +36,17 @@
   *(Index: sniper, Column: unique number of snipes)*
 
 - **`firstframe`**: Date of first snipe/sniped and how many days they have recorded a snipe / been sniped
+
+## Graphs and their Requirements
+
+-**`weekdaypie`**: Pie chart of days of the week based on snipes on those days. *Requires: truncdateframe*
+
+-**`overtime`**: Line chart of snipes over time *Requires: truncdateframe*
+
+-**`topSn_overtime`**: Line chart of the top N snipers over time. *Requires: basicframe, sn_dateframe*
+
+-**`topSn_pie`**: Pie chart of the top N snipers compared to the rest of the group. *Requires: basicframe, sn_dateframe*
+
+-**`topSd_overtime`**: Line chart of the top N sniped over time. *Requires: basicframe, sd_dateframe*
+
+-**`topSd_pie`**: Pie chart of the top N sniped compared to the rest of the group. *Requires: basicframe, sd_dateframe*

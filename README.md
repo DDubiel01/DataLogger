@@ -11,6 +11,8 @@ This was created to make logging and tracking snipes easier. The code allows log
     - Sheets is used as a database for storing snipes. Users don't have to worry about accessing and viewing databases and can easily get to the raw data to correct mistakes
 - **Analytics**
     - Stat breakdowns for the group as a whole and for individual players. Users can select which stats they want generated and view the results in a spreadsheet
+- **Visualization**
+    - Available graphs to view different stat breakdowns including snipes over time, by day of the week, and leaders compared to the average
 - **Multiple Themes**
     - DataLogger can run in any Themed Tkinter theme. The default is set to Aqua
 
@@ -19,5 +21,3 @@ This was created to make logging and tracking snipes easier. The code allows log
 `pip install -r path/to/requirements.txt`
 1. Drop the required OAuth credentials into the gui/config folder with the name client_secret.json
 1. Done!
-
-1. hello from vscode

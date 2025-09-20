@@ -1,17 +1,20 @@
-# import numpy as np
-# import datetime
-# import pandas as pd
-# import openpyxl as pyxl
-import sys
-import pandastable as pt
-import tkinter as tk
-from tkinter import ttk, simpledialog
-from ttkthemes import ThemedTk
-from PIL import Image, ImageTk
-import os
-import pygsheets
-import json
-from gui.utils import gui_funcs
+try:
+    import sys
+    import pandastable as pt
+    import tkinter as tk
+    from tkinter import ttk, simpledialog
+    from ttkthemes import ThemedTk
+    from PIL import Image, ImageTk
+    import os
+    import pygsheets
+    import json
+    from gui.utils import gui_funcs
+except:
+    print('There was an error importing packages')
+    input()
+    import sys
+    sys.exit()
+
 
 class mainEntryFrame(ttk.Frame):
     class BookObj:
@@ -230,6 +233,7 @@ class TableFrame(ttk.Frame):
 class WhiteListWindow(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self)
+        self.grab_set()
         
         self.Master = master
 
@@ -290,6 +294,7 @@ class SettingsPopUp(tk.Toplevel):
     def __init__(self, master):
         #Standard Startup Stuff
         tk.Toplevel.__init__(self)
+        self.grab_set()
         
         self.Master = master
         
@@ -489,7 +494,6 @@ class App(ThemedTk):
             app.destroy()
             sys.exit()
         except Exception as err:
-            print('hit\n\n\n')
             data = app.masttable_frm.table.model.df
             location = os.path.dirname(app.location) + r'\\Data_Backup.xlsx'
             data.to_excel(location )

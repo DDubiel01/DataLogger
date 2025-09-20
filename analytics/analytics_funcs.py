@@ -1,5 +1,6 @@
 import pandas as pd
 import pygsheets
+import matplotlib.pyplot as plt
 
 def import_data(credentials, book_name, data_sheet, whitelist_sheet):
     ''' 
@@ -229,4 +230,208 @@ def create_firstframe(names_dict, sn_dateframe, sd_dateframe):
             
     return firstframe
             
+def plot_weekdaypie(truncdateframe, figlength = 10, figheight = 5, titlesize = 18):
+    ''' 
+    Inputs:
 
+    truncdateframe
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    weekdaypie
+    '''
+
+    sumsbyweekday = truncdateframe['Day of Week'].value_counts()
+    sumsbyweekday.rename(index = { 0.0 : 'Sunday',
+                                1.0 : 'Monday',
+                                2.0 : 'Tuesday',
+                                3.0 : 'Wednesday',
+                                4.0 : 'Thursday',
+                                5.0 : 'Friday',
+                                6.0 : 'Saturday'}, inplace = True)
+
+    weekdaypie = sumsbyweekday.plot.pie(figsize = (figlength, figheight),
+                        ylabel = '')
+
+    weekdaypie.set_title('Snipes per Day of the Week', fontsize = titlesize)
+   
+    return weekdaypie
+
+def plot_overtime(dateframe, figlength = 10, figheight = 5, titlesize = 18, xsize = 14, ysize = 14):
+    ''' 
+    Inputs:
+
+    dateframe
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    overtime plot
+    '''
+
+    overtime_fig, overtime_ax = plt.subplots()
+
+    y = dateframe['Snipes'].cumsum().values
+        
+    overtime_ax.plot(dateframe.index.values, y)
+
+    overtime_ax.grid(axis = 'y')
+
+    overtime_fig.set_figwidth(figlength)
+    overtime_fig.set_figheight(figheight)
+
+    overtime_ax.set_xlabel('Date', fontsize = xsize)
+    overtime_ax.set_ylabel('Snipes', fontsize = ysize)
+    overtime_ax.set_title('Snipes Over Time', fontsize = titlesize)
+
+    return overtime_fig
+
+def plot_topSn_overtime(basicframe, sn_dateframe, topqty, figlength = 10, figheight = 5, titlesize = 18, xsize = 14, ysize = 14, legendsize = 10):
+    '''
+    Inputs:
+
+    basicframe
+    sn_dateframe
+    topqty (int): number of top snipers to plot
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    plot of top snipers over time
+    '''
+
+    #Get Names of the top snipers
+    topsns = basicframe.sort_values('Snipes', ascending = False).head(topqty).index.values
+    #Make a dataframe without the top snipers
+    noleaders_sn_dateframe = sn_dateframe.loc[:, ~sn_dateframe.columns.isin(topsns)]
+    #Turn that frame into a single column
+    noleaders_sn_dateframe['Sum'] = noleaders_sn_dateframe.sum(axis = 1)
+    #Get a frame of just the top snipers
+    onlyleaders_sn_dateframe = sn_dateframe.loc[:,topsns]
+
+    #Create a column calculating the average snipes each day
+    noleaders_sn_dateframe['Average'] = noleaders_sn_dateframe.loc[:, noleaders_sn_dateframe.columns != 'Sum'].mean(axis = 1)
+    #Plot
+
+    snleaderplot_fig, snleaderplot_ax = plt.subplots()
+    snleaderframe = onlyleaders_sn_dateframe.join(noleaders_sn_dateframe['Average'])
+
+    snleaderframe.cumsum().plot(figsize = (figlength, figheight), ax = snleaderplot_ax)
+
+    snleaderplot_ax.grid(axis = 'y')
+
+    snleaderplot_fig.set_figwidth(figlength)
+    snleaderplot_fig.set_figheight(figheight)
+
+    snleaderplot_ax.legend(fontsize = legendsize)
+
+    snleaderplot_ax.set_xlabel('Date', fontsize = xsize)
+    snleaderplot_ax.set_ylabel('Snipes', fontsize = ysize)
+    snleaderplot_ax.set_title('Top {} Snipers'.format(topqty), fontsize = titlesize)
+
+    return snleaderplot_fig
+
+def plot_topSn_pie(basicframe, sn_dateframe, topqty, figlength = 10, figheight = 5, titlesize = 18):
+    '''
+    Inputs:
+
+    dateframe
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    overtime plot
+    '''
+    #Get Names of the top snipers
+    topsns = basicframe.sort_values('Snipes', ascending = False).head(topqty).index.values 
+    #Make a dataframe without the top snipers
+    noleaders_sn_dateframe = sn_dateframe.loc[:, ~sn_dateframe.columns.isin(topsns)]
+    #Turn that frame into a single column
+    noleaders_sn_dateframe['Sum'] = noleaders_sn_dateframe.sum(axis = 1)
+    #Get a frame of just the top snipers
+    onlyleaders_sn_dateframe = sn_dateframe.loc[:,topsns]
+
+    #Create a column calculating the average snipes each day
+    noleaders_sn_dateframe['Average'] = noleaders_sn_dateframe.loc[:, noleaders_sn_dateframe.columns != 'Sum'].mean(axis = 1)
+    #Plo
+    sntopandothers = onlyleaders_sn_dateframe.join(noleaders_sn_dateframe['Sum'])
+    sntopandothers.rename(columns = {'Sum':'Everyone Else'}, inplace = True)
+    top5pie_sn_ax = sntopandothers.sum(axis = 0).plot.pie(figsize = (figlength, figheight), autopct='%1.1f%%')
+
+    top5pie_sn_ax.set_title('Top {} Snipers'.format(topqty), fontsize = titlesize)
+    return top5pie_sn_ax
+
+def plot_topSd_overtime(basicframe, sd_dateframe, topqty, figlength = 10, figheight = 5, titlesize = 18, xsize = 14, ysize = 14, legendsize = 10):
+    '''
+    Inputs:
+
+    basicframe
+    sd_dateframe
+    topqty (int): number of top snipers to plot
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    Chart of top sniped over time
+    '''
+
+    #Get Names of the top snipers
+    topsds = basicframe.sort_values('Sniped', ascending = False).head(topqty).index.values
+    #Make a dataframe without the top snipers
+    noleaders_sd_dateframe = sd_dateframe.loc[:, ~sd_dateframe.columns.isin(topsds)]
+    #Turn that frame into a single column
+    noleaders_sd_dateframe['Sum'] = noleaders_sd_dateframe.sum(axis = 1)
+    #Get a frame of just the top snipers
+    onlyleaders_sd_dateframe = sd_dateframe.loc[:,topsds]
+
+    #Create a column calculating the average snipes each day
+    noleaders_sd_dateframe['Average'] = noleaders_sd_dateframe.loc[:, noleaders_sd_dateframe.columns != 'Sum'].mean(axis = 1)
+    #Plot
+
+    sdleaderplot_fig, sdleaderplot_ax = plt.subplots()
+    sdleaderframe = onlyleaders_sd_dateframe.join(noleaders_sd_dateframe['Average'])
+
+    sdleaderframe.cumsum().plot(figsize = (figlength, figheight), ax = sdleaderplot_ax)
+
+    sdleaderplot_ax.grid(axis = 'y')
+
+    sdleaderplot_ax.legend(fontsize = legendsize)
+
+    sdleaderplot_fig.set_figwidth(figlength)
+    sdleaderplot_fig.set_figheight(figheight)
+
+    sdleaderplot_ax.set_xlabel('Date', fontsize = xsize)
+    sdleaderplot_ax.set_ylabel('Sniped', fontsize = ysize)
+    sdleaderplot_ax.set_title('Top 5 Sniped', fontsize = titlesize)
+
+    return sdleaderplot_fig
+
+def plot_topSd_pie(basicframe, sd_dateframe, topqty, figlength = 10, figheight = 5, titlesize = 18):
+    '''
+    Inputs:
+
+    basicframe
+    sd_dateframe
+    topqty (int): number of top snipers to plot
+    kwarg figure size parameters
+
+    Outputs (see docs for frames):
+
+    Pie chart of top sniped
+    '''
+    #Get Names of the top snipers
+    topsds = basicframe.sort_values('Sniped', ascending = False).head(topqty).index.values
+    #Make a dataframe without the top snipers
+    noleaders_sd_dateframe = sd_dateframe.loc[:, ~sd_dateframe.columns.isin(topsds)]
+    #Turn that frame into a single column
+    noleaders_sd_dateframe['Sum'] = noleaders_sd_dateframe.sum(axis = 1)
+    #Get a frame of just the top snipers
+    onlyleaders_sd_dateframe = sd_dateframe.loc[:,topsds]
+
+    sdtopandothers = onlyleaders_sd_dateframe.join(noleaders_sd_dateframe['Sum'])
+    sdtopandothers.rename(columns = {'Sum':'Everyone Else'}, inplace = True)
+    top5pie_sd_ax = sdtopandothers.sum(axis = 0).plot.pie(figsize = (figlength, figheight), autopct='%1.1f%%')
+
+    top5pie_sd_ax.set_title('Top 5 Sniped', fontsize = titlesize)
+    return top5pie_sd_ax

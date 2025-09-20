@@ -1,0 +1,22 @@
+{
+    "sheets": {
+        "basicframe": false,
+        "comboframe": false,
+        "uniqueframe": false,
+        "firstframe": false,
+        "dateframe": false,
+        "weekframe": false,
+        "sn_dateframe": false,
+        "sd_dateframe": false,
+        "sn_byweek": false,
+        "sd_byweek": false
+    },
+    "graphs": {
+        "weekdaypie": false,
+        "overtime": false,
+        "topSn_overtime": false,
+        "topSn_pie": false,
+        "topSd_overtime": false,
+        "topSd_pie": false
+    }
+}
