@@ -13,8 +13,8 @@ This was created to make logging and tracking snipes easier. The code allows log
     - Stat breakdowns for the group as a whole and for individual players. Users can select which stats they want generated and view the results in a spreadsheet
 - **Visualization**
     - Available graphs to view different stat breakdowns including snipes over time, by day of the week, and leaders compared to the average
-- **Multiple Themes**
-    - DataLogger can run in any Themed Tkinter theme. The default is set to Aqua
+- **Projections**
+    - Available StatShot window projects end of season total snipes, and shows a quick breakdown of key statistics
 
 ## Installation
 1. Install the requirements.txt file  

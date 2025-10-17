@@ -3,12 +3,16 @@ try:
     import pandastable as pt
     import tkinter as tk
     from tkinter import ttk, simpledialog
-    from ttkthemes import ThemedTk
     from PIL import Image, ImageTk
     import os
     import pygsheets
     import json
     from gui.utils import gui_funcs
+    from matplotlib import pyplot as plt
+    import numpy as np
+    import statsmodels.api as sm
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
 except:
     print('There was an error importing packages')
     input()
@@ -44,7 +48,8 @@ class mainEntryFrame(ttk.Frame):
                                   width=50,
                                        style = 'entry_normal.TEntry')
             sniper_lbl = ttk.Label(master=self.frame,
-                                  text='   Sniper: ') #3 spaces to space from edge
+                                  text='   Sniper: ',
+                                  style = 'default.TLabel') #3 spaces to space from edge
                                   
             self.sniper_ent.grid(row=0, column=1)
             sniper_lbl.grid(row=0, column=0, sticky='nsew')
@@ -53,7 +58,8 @@ class mainEntryFrame(ttk.Frame):
                                   width=50,
                                   style = 'entry_normal.TEntry')
             sniped_lbl = ttk.Label(master=self.frame,
-                                  text='  Sniped: ') #3 spaces to space from edge
+                                  text='  Sniped: ',
+                                  style = 'default.TLabel') #3 spaces to space from edge
                                   
             self.sniped_ent.grid(row=1, column=1)
             sniped_lbl.grid(row=1, column=0, sticky = 'nsew')
@@ -65,7 +71,7 @@ class mainEntryFrame(ttk.Frame):
         self.fwdbck_frm = ttk.Frame(master = self)
         self.subcan_frm = ttk.Frame(master = self)
 
-        #Below, options, then fwdbck, then subcan are filled. Book is filled last because I said so
+        #Options, then fwdbck, then subcan are filled. Book is filled last because I said so
 
         #place containers
         self.options_frm.grid(row = 0,
@@ -81,6 +87,7 @@ class mainEntryFrame(ttk.Frame):
                         pady = 7)
 
         #Options Frame
+        #Managed by PACK
 
         #Whitelist button
         try:
@@ -115,6 +122,23 @@ class mainEntryFrame(ttk.Frame):
         self.stats_btn.image = stats_pic
 
         self.stats_btn.pack(side='right')
+
+        #QuickView Button
+        try:
+            qv_img = Image.open(self.master.location + r'\gui\assets\QuickView_Icon_PNG.png')
+        except Exception as err:
+            gui_funcs.GenericError(err)
+
+        qv_img= qv_img.resize((22,20))
+        qv_pic= ImageTk.PhotoImage(qv_img, master = self.options_frm)
+
+        self.qv_btn = ttk.Button(master = self.options_frm,
+                                        image = qv_pic,
+                                        command = master.launchQuickView,
+                                        style = 'default.TButton')
+        self.qv_btn.image = qv_pic
+
+        self.qv_btn.pack(side = 'right')
 
         # Yesterday button
         self.yday_btn = ttk.Button(master = self.options_frm,
@@ -362,8 +386,182 @@ class SettingsPopUp(tk.Toplevel):
     def SettingCancelBtn(self):
         tk.messagebox.showinfo('No Changes Made', 'Program File Intact\nNo Changes Made')
         self.destroy()
-    
-class App(ThemedTk):
+
+class QuickView(tk.Toplevel):
+    def __init__(self, parent):
+        from analytics import analytics_funcs as af
+        self.parent = parent
+        #Fetch data and create necessary 
+        raw, names_dict = af.import_data(self.parent.creds, "Sniper Logging", "David", "Whitelist for Decryption")
+        basicframe = af.create_basicframe(raw, names_dict)
+        dateframe, weekframe, truncdateframe, daterange = af.create_timetotal(raw)
+
+        #Convert snipes per day to total on each day
+        sn_daytotal = dateframe.cumsum()
+
+        #Convert date into numerical day
+        sn_daytotal = sn_daytotal.reset_index().rename(columns = {'index':'Date'})
+        sn_daytotal['Date'] = (sn_daytotal['Date'] - sn_daytotal['Date'].min()).dt.days
+
+        # #Create a least squares fit. No constant because 0 days should equal 0 snipes
+        x = sn_daytotal['Date'].values
+        y = sn_daytotal['Snipes'].values
+        model = sm.OLS(y, x).fit()
+
+        #Set a prediction range and generate predictions using the model
+        proj_days = int(self.parent.proginfo["Projection Days"])
+        proj = np.arange(0,proj_days+1)
+        predictions = model.get_prediction(proj)
+        pred_summary = predictions.summary_frame(alpha=0.05) #summary frame has a bunch more information too
+
+        #Now generate the top 3s, this code straight from the award book
+        top3_sn_frame = basicframe.sort_values('Snipes',ascending=False).head(n=3).reset_index(names = "Person")
+        top3_sd_frame = basicframe.sort_values('Sniped',ascending=False).head(n=3).reset_index(names = "Person")
+        #And grab the top KD while were at it
+        kdidx = basicframe['K/D'].idxmax()
+        kd = basicframe.loc[kdidx]
+
+        #Get the last n00th snipe i.e. 500th, 700th
+        idx100 = len(raw) - len(raw)%100 - 1
+        last100 = raw.iloc[idx100]
+
+        sn = last100['Sniper']
+        sd = last100['Sniped']
+
+        ##########################################################################33
+        ### Initialize the Window and start doing all the GUI stuff
+        tk.Toplevel.__init__(self)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        
+
+        #Container frame so the theme applies to the background
+        container_frm = ttk.Frame(master = self, style = 'default.TFrame')
+        container_frm.pack()
+
+        #Master Frames. window managed by GRID
+        #Title frame is simple, managed by PACK
+        title_frm = ttk.Frame(master = container_frm, style = 'default.TFrame')
+        #Top 3 for the stats on the left sidebar, managed by PACK
+        top3_frm = ttk.Frame(master = container_frm, style = 'default.TFrame')
+        #Houses the graph, managed by PACK
+        graph_frm = ttk.Frame(master = container_frm, style = 'default.TFrame')
+        #For the projection numbers, total days, and total snipes, managed by GRID
+        snapshot_frm = ttk.Frame(master = container_frm, style = 'default.TFrame')
+
+        #Place Masters
+        title_frm.grid(row = 0, column = 0, columnspan = 2, pady = 5)
+        top3_frm.grid(row = 1, column = 0, rowspan = 2, padx = 5, pady = 5, sticky = 'n')
+        graph_frm.grid(row = 1, column = 1)
+        snapshot_frm.grid(row = 2, column = 1, pady = (0,5))
+
+        #Title
+        title_lbl = ttk.Label(master = title_frm, 
+                              text = "StatShot",
+                              style = 'title.TLabel')
+        title_lbl.pack()
+
+        #Before doing the top3s, set a common indent
+        indent = 10
+        #All the labels in the top3_frm go XXXX_lbl1 for the title label and XXXX_lbl2 for the actual information
+        #Top 3 Snipers
+        t3sn_lbl1 = ttk.Label(master = top3_frm, 
+                             text = "Top 3 Snipers:",
+                             style = 'sub_title.TLabel')        
+        t3sn_lbl2 = ttk.Label(master = top3_frm,
+                              text = "1: {0}, {1}\n".format(top3_sn_frame["Person"][0], top3_sn_frame["Snipes"][0]) +
+                            "2: {0}, {1}\n".format(top3_sn_frame["Person"][1], top3_sn_frame["Snipes"][1]) +
+                            "3: {0}, {1}".format(top3_sn_frame["Person"][2], top3_sn_frame["Snipes"][2]),
+                              style = 'stat_info.TLabel')
+        t3sn_lbl1.pack(pady = (0,5), anchor = 'w')
+        t3sn_lbl2.pack(padx = indent, anchor = 'w')
+
+        #Top 3 Sniped
+        t3sd_lbl1 = ttk.Label(master = top3_frm, 
+                             text = "Top 3 Sniped:",
+                             style = 'sub_title.TLabel')                            
+        t3sd_lbl2 = ttk.Label(master = top3_frm,
+                              text = "1: {0}, {1}\n".format(top3_sd_frame["Person"][0], top3_sd_frame["Sniped"][0]) +
+                            "2: {0}, {1}\n".format(top3_sd_frame["Person"][1], top3_sd_frame["Sniped"][1]) +
+                            "3: {0}, {1}".format(top3_sd_frame["Person"][2], top3_sd_frame["Sniped"][2]),
+                              style = 'stat_info.TLabel')
+        t3sd_lbl1.pack(pady = (15,5), anchor = 'w')
+        t3sd_lbl2.pack(padx = indent, anchor = 'w')
+
+        #KD
+        kd_lbl1 = ttk.Label(master = top3_frm,
+                            text = "K/D Leader:",
+                            style = 'sub_title.TLabel')
+        kd_lbl2 = ttk.Label(master = top3_frm,
+                            text = "{0}, {1}".format(kd.name, np.round(kd['K/D'], 2)),
+                            style = 'stat_info.TLabel')
+        kd_lbl1.pack(pady = (15,5), anchor = 'w')
+        kd_lbl2.pack(padx = indent, anchor = 'w')
+
+        #Last n00th
+        last100_lbl1 = ttk.Label(master = top3_frm, 
+                                text = "{0}th Snipe:".format(idx100+1),
+                                style = 'sub_title.TLabel')
+        last100_lbl2 = ttk.Label(master = top3_frm,
+                                 text = "{0}, {1}".format(sn, sd),
+                                 style = 'stat_info.TLabel')
+        last100_lbl1.pack(pady = (15,0), anchor = 'w')
+        last100_lbl2.pack(padx = indent, anchor = 'w')
+
+        #Graph Frame
+        # create the plots from the statsmodel
+        fig = plt.figure(1, figsize = (6,3), facecolor= parent.common_background)
+        plt.plot(proj, pred_summary['mean'].values, 'k')
+        plt.plot(proj, pred_summary['mean_ci_upper'].values, 'r')
+        plt.plot(proj, pred_summary['mean_ci_lower'].values, 'r')
+        plt.plot(x, y, 'b')
+
+        plt.xlabel("Days", color = self.parent.common_text)
+        plt.ylabel("Snipes", color = self.parent.common_text)
+        plt.tick_params(axis='x', colors=self.parent.common_text)        
+        plt.tick_params(axis='y', colors=self.parent.common_text)
+        plt.tight_layout()
+
+        # Create a canvas and place
+        canvas = FigureCanvasTkAgg(fig,
+                                master = graph_frm)  
+        canvas.draw()
+        canvas.get_tk_widget().pack()
+
+        #Snapshot frame
+        mean = int(np.round(pred_summary['mean'][proj_days], 0))
+        upper = int(np.round(pred_summary['mean_ci_upper'][proj_days], 0))
+        lower = int(np.round(pred_summary['mean_ci_lower'][proj_days], 0))
+
+        mean_lbl = ttk.Label(master = snapshot_frm,
+                            text = 'Projection: ' + str(mean),
+                            style = 'projection_info.TLabel')
+        upper_lbl = ttk.Label(master = snapshot_frm,
+                             text = 'Upper Projection: ' + str(upper),
+                            style = 'projection_info.TLabel')
+        lower_lbl = ttk.Label(master = snapshot_frm,
+                             text = 'Lower Projection: ' + str(lower),
+                            style = 'projection_info.TLabel')
+
+        mean_lbl.grid(row = 0, column = 2, padx = 10, columnspan = 2)
+        upper_lbl.grid(row = 0, column = 4, sticky = 'e', columnspan = 2)
+        lower_lbl.grid(row = 0, column = 0, sticky = 'w', columnspan = 2)
+
+        totalday_lbl = ttk.Label(master = snapshot_frm,
+                                 text = "Total Days: {}".format(len(sn_daytotal['Date'])),
+                                 style = 'projection_info.TLabel')
+        totalsn_lbl = ttk.Label(master = snapshot_frm,
+                                text = "Total Snipes: {}".format(len(raw)-1),
+                                style = 'projection_info.TLabel')
+
+        totalday_lbl.grid(row = 1, column = 2, padx = 5, pady = 5)
+        totalsn_lbl.grid(row = 1, column = 3, padx = 5)
+
+    def on_close(self):
+        plt.close('all')
+        self.destroy()
+
+
+class App(tk.Tk):
     def __init__(self):
         #Self.location is the location where the folder is stored
         self.location = os.path.dirname(__file__)
@@ -420,7 +618,8 @@ class App(ThemedTk):
                     sys.exit()
                 
         #Initialize
-        ThemedTk.__init__(self, theme = self.proginfo['Theme'])
+        # ThemedTk.__init__(self, theme = 'clam')
+        tk.Tk.__init__(self)
         self.style = ttk.Style()
         self.style.layout('TNotebook.Tab', [])
         
@@ -430,17 +629,27 @@ class App(ThemedTk):
         except Exception as err:
             gui_funcs.GenericError(err)
         
-        self.title('Data Entry V3.0')
+        self.title('Data Entry')
 
-        #set button/label styles
+        #Style Block
+        #Main Window
         self.style.configure('default.TButton', font=('Helvetica', 12))
         self.style.configure('entry_error.TEntry', fieldbackground='red')
         self.style.configure('entry_normal.TEntry', fieldbackground='white')
-        self.style.configure('yday_green.TButton', font=('Helvetica', 11, 'bold'), foreground = '#339E37')
-        self.style.configure('whitelist.TButton', width = 7, font = ('Helvetica', 10))
-        self.style.configure('hidden.TLabel', width = 5,
-                             fieldbackground = self.style.lookup('TFrame','background'),
-                             foreground = self.style.lookup('TFrame', 'background'))
+        self.style.configure('default.TLabel', font = ('Segoe UI', 12))
+        self.style.configure('yday_green.TButton', font=('Segoe UI', 11, 'bold'), foreground = '#339E37')
+
+        #Whitelist Window
+        self.style.configure('whitelist.TButton', width = 7, font = ('Segoe UI', 10))
+        
+        #QuickView Window
+        self.common_background = "#404145"
+        self.common_text = "#FFFFFF"
+        self.style.configure('title.TLabel', font = ('Bahnschrift', 24, 'bold'), background = self.common_background, foreground = self.common_text)
+        self.style.configure('sub_title.TLabel', font = ('Segoe UI', 12, 'bold'), background = self.common_background, foreground = self.common_text)
+        self.style.configure('stat_info.TLabel', font = ('Gill Sans MT', 10), background = self.common_background, foreground = self.common_text)
+        self.style.configure('projection_info.TLabel', font = ('Gill Sans MT', 10, 'italic'), background = self.common_background, foreground = self.common_text)
+        self.style.configure('default.TFrame', background = self.common_background)
         
         #Start both master frames and pack the entry frame        
         self.mastent_frm = mainEntryFrame(self)
@@ -450,6 +659,9 @@ class App(ThemedTk):
         
     def launchWhiteListWindow(app):
         WhiteListWindow(app)
+
+    def launchQuickView(app):
+        QuickView(app)
     
     def YesterdayBtn(app):
         #Check what style it is, and change it to the other
@@ -485,21 +697,33 @@ class App(ThemedTk):
     def DataSubmitBtn(app):
         #Open WorkBook
         try:
+            #Access the worksheet
             worksheet = app.workbook.worksheet('title', app.proginfo['User'])
+            #Append table returns sheetinfo, which has a couple fun tidbits about the worksheet
             sheetinfo = worksheet.append_table(app.masttable_frm.table.model.df.values.tolist())
 
+            #num is the index of the final cell in the range
             num = sheetinfo['updates']['updatedRange'].end[0]
 
-            tk.messagebox.showinfo('Program Success',('Data Successfully Written\n' + str(num-1) + ' Snipes Recorded'))
+            #get the last 100 and pull out the sniper/sniped cells
+            last100idx = num - num%100
+            sncell = worksheet.cell((last100idx + 1, 1))
+            sdcell = worksheet.cell((last100idx + 1, 2))
+
+            tk.messagebox.showinfo('Program Success',('Data Successfully Written\n{0} Snipes Recorded\n\n{1}th Snipe: {2}, {3}'.format(num, last100idx, sncell.value, sdcell.value)))
             app.destroy()
             sys.exit()
+
         except Exception as err:
+            #If things go catastrophically wrong, the data needs to be saved
             data = app.masttable_frm.table.model.df
             location = os.path.dirname(app.location) + r'\\Data_Backup.xlsx'
             data.to_excel(location )
+
             tk.messagebox.showerror('Write Error','There was an error while writing to the Google Sheet\n\n{0}\n\n' \
             'Your data has been saved to the following file:\n\n' \
             '{1}\n\nProgram will now close'.format(err,location))
+
             app.destroy()
             sys.exit()
 
@@ -590,5 +814,7 @@ class App(ThemedTk):
             else:
                 tk.messagebox.showinfo('Bad Value', 'Illegal Name Entered\nPlease Re-enter')
 
-app = App()
-app.mainloop()
+
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()

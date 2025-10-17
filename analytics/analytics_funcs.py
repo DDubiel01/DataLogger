@@ -1,6 +1,7 @@
 import pandas as pd
 import pygsheets
 import matplotlib.pyplot as plt
+import numpy as np
 
 def import_data(credentials, book_name, data_sheet, whitelist_sheet):
     ''' 
@@ -121,6 +122,7 @@ def create_timetotal(rawdf):
     dateframe
     weekframe
     truncdateframe
+    daterange
     '''
     #Truncate the dates into month/day/year
     truncdateframe = rawdf
@@ -435,3 +437,104 @@ def plot_topSd_pie(basicframe, sd_dateframe, topqty, figlength = 10, figheight =
 
     top5pie_sd_ax.set_title('Top 5 Sniped', fontsize = titlesize)
     return top5pie_sd_ax
+
+
+
+def Generate_Workbook(rawdf, names_dict: dict):
+    basicframe = create_basicframe(rawdf, names_dict)
+    comboframe = create_comboframe(rawdf, names_dict)
+    uniqueframe = create_uniqueframe(comboframe, names_dict)
+    daeframe, weekframe, truncdateframe, daterange = create_timetotal(rawdf)
+    sn_dateframe, sd_dateframe, sn_byweek, sd_byweek = create_timeind(truncdateframe, names_dict, daterange)
+    firstframe = create_firstframe(names_dict, sn_dateframe, sd_dateframe)
+    
+    awardlist = ['Top 1',
+            'Top 2',
+            'Top 3',
+            'Top sd1',
+            'Top sd2',
+            'Top sd3',
+            'Highest K/D',
+            'Most in Day',
+            'Most in Day sn',
+            'Most in Week',
+            'Most in Week sd',
+            'Couple',
+            'Most Unique',
+            'Closest',
+            'Farthest',
+            'First',
+            'Last to be Sniped',
+            'Most Sniped Days',
+            'Last to get a Snipe',
+            'Most Sniping Days',
+            'Earliest',
+            'OTS',
+            'Survivors',
+            'Pacifists']
+
+    #Initialize
+    awardframe = pd.DataFrame(columns= ['Person','Value'],index=awardlist)
+
+    #Get the top 3 snipers
+    top3 = basicframe.sort_values('Snipes',ascending=False).head(n=3)
+    awardframe.iloc[:3]=(top3.reset_index().iloc[:,:2])
+
+    #Get the top 3 sniped
+    top3sd = basicframe.sort_values('Sniped',ascending=False).head(n=3)
+    awardframe.iloc[3:6]=(top3sd.reset_index().iloc[:,[0,2]])
+
+    #Get the best KD
+    topKD = basicframe.sort_values('K/D',ascending=False).head(n=1)
+    awardframe.iloc[6]=(topKD.reset_index().iloc[:,[0,3]].values)
+
+    #Get most in day and week
+    #Initialize empty 2 column array
+    arr = np.empty((1,2),dtype = object)
+
+    for frame in [sn_dateframe, sd_dateframe, sn_byweek, sd_byweek]:
+        #Get the indicies of the maximum
+        date, person = np.where(frame.values == frame.values.max())
+        #Append the name/date of the indicies to the awardframe
+        arr = np.vstack((arr, [frame.columns[person].values[0], frame.index[date].values[0]]))
+
+    awardframe.iloc[7:11] = arr[1:]
+
+    #Repeat process for the ComboFrame
+    sniper, sniped = np.where(comboframe.values == comboframe.values.max())
+    awardframe.iloc[11] = [(comboframe.index[sniper].values[0], comboframe.columns[sniped].values[0]), comboframe.values.max()]
+
+    #Use the same process as KD max for unique max
+    unique = uniqueframe.sort_values('No. Diff People Sniped',ascending = False).head(n=1)
+    awardframe.iloc[12] = unique.reset_index().values
+
+    #Iterate over the FirstFrame columns to get the max from each
+    lst = []
+    for col in firstframe.columns.values:
+        name = firstframe.sort_values(col, ascending = False).head(n=1).reset_index().values
+        val = firstframe.sort_values(col, ascending = False).head(n=1).reset_index()[col].values
+        lst.append((name,val))
+        
+    awardframe.loc['Last to get a Snipe'] = lst[0]
+    awardframe.loc['Most Sniping Days'] = lst[1]
+    awardframe.loc['Last to be Sniped'] = lst[2]
+    awardframe.loc['Most Sniped Days'] = lst[3]
+
+    #make a frame of just people that have no snipes
+    tempframe = basicframe.loc[basicframe['Snipes'] == 0]
+    #Sort out people who havent been sniped
+    pacifistframe = tempframe.loc[tempframe['Sniped'] != 0]
+    #Add to the award frame
+    awardframe.loc['Pacifists'] = [pacifistframe.index.values , 0]
+
+    for i in [69,420,513]:
+        awardframe.loc[i] = [[rawdf.iloc[i,0:2].values],rawdf.iloc[i,2]]
+        
+        
+    awardframe.loc['1'] = [[rawdf.iloc[0,0:2].values],rawdf.iloc[0,2]]
+    for i in range(99,len(rawdf),100):
+        awardframe.loc[i + 1] = [[rawdf.iloc[i,0:2].values],rawdf.iloc[i,2]]
+
+    return awardframe
+
+
